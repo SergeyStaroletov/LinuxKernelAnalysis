@@ -22,13 +22,12 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 
-
 public class Main {
-
 
 
     /**
      * Sorts a map by the value (desc)
+     *
      * @param map
      * @param <K>
      * @param <V>
@@ -48,6 +47,7 @@ public class Main {
 
     /**
      * Computes destance between 2 strings
+     *
      * @param s
      * @param t
      * @return
@@ -67,11 +67,10 @@ public class Main {
         }
 
         // Step 2
-        for (int i = 0; i <= n; d[i][0] = i++) {
-        }
+        for (int i = 0; i <= n; d[i][0] = i++) ;
 
-        for (int j = 0; j <= m; d[0][j] = j++) {
-        }
+
+        for (int j = 0; j <= m; d[0][j] = j++) ;
 
         // Step 3
         for (int i = 1; i <= n; i++) {
@@ -93,7 +92,7 @@ public class Main {
 
     public static void main(String[] args) throws IOException, GitAPIException {
         //Repository repo = new FileRepository("/Users/sergey/IdeaProjects/bluez/.git");
-       // Repository repo = new FileRepository("/Users/sergey/IdeaProjects/CalculatorTDD/.git");
+        // Repository repo = new FileRepository("/Users/sergey/IdeaProjects/CalculatorTDD/.git");
         Repository repo = new FileRepository("/Users/sergey/IdeaProjects/linux/.git");
 
         String pathInGit = "mm";
@@ -103,7 +102,7 @@ public class Main {
         df.setDiffComparator(RawTextComparator.DEFAULT);
         df.setDetectRenames(true);
 
-       // ByteArrayOutputStream os = new ByteArrayOutputStream();
+        // ByteArrayOutputStream os = new ByteArrayOutputStream();
         DiffFormatter df2 = new DiffFormatter(System.out);
         RawTextComparator cmp = RawTextComparator.DEFAULT;
 
@@ -138,7 +137,8 @@ public class Main {
 
             Iterable<RevCommit> commits;
 
-            if (pathInGit.equals("") || pathInGit.equals("/"))  commits = git.log().all().call(); else {
+            if (pathInGit.equals("") || pathInGit.equals("/")) commits = git.log().all().call();
+            else {
                 LogCommand logCommand = git.log()
                         .add(git.getRepository().resolve(Constants.HEAD))
                         .addPath(pathInGit);
@@ -148,10 +148,11 @@ public class Main {
 
             int count = 0;
             for (RevCommit commit : commits) {
-            count++;
+                count++;
             }
 
-            if (pathInGit.equals("") || pathInGit.equals("/"))  commits = git.log().all().call(); else {
+            if (pathInGit.equals("") || pathInGit.equals("/")) commits = git.log().all().call();
+            else {
                 LogCommand logCommand = git.log()
                         .add(git.getRepository().resolve(Constants.HEAD))
                         .addPath(pathInGit);
@@ -201,21 +202,21 @@ public class Main {
                     Boolean isFixes = false;
 
                     int posFixes = newMsg.indexOf("Fixes:");
-                    if (posFixes==pos) isFixes = true;
+                    if (posFixes == pos) isFixes = true;
 
                     //int pos = 0;
                     if (pos != -1) {
 
                         if (!isFixes)
                             pos += 3;
-                            else
+                        else
                             pos += 6;//for messages with Fixes:
 
                         int end = newMsg.indexOf('\n', pos);
 
                         if (end != -1) newMsg = newMsg.substring(pos, end);
                         else newMsg = newMsg.substring(pos);
-                        System.out.println("Commit : " + String.valueOf(current) +"/" + String.valueOf(count)+ ", branch = "+branch.getName() );
+                        System.out.println("Commit : " + String.valueOf(current) + "/" + String.valueOf(count) + ", branch = " + branch.getName());
                         //System.out.println(commit.getName());
                         //System.out.println(commit.getAuthorIdent().getName());
                         System.out.println(new Date(commit.getCommitTime()));
@@ -240,17 +241,15 @@ public class Main {
                         Integer countR = msgRelevance.get(newMsg);
                         if (countR == null) {
                             msgRelevance.put(newMsg, 1);
-                        }
-                        else {
+                        } else {
                             msgRelevance.put(newMsg, countR + 1);
                         }
 
                         if (strMin.length() > 0) {
-                             countR = msgRelevance.get(strMin);
+                            countR = msgRelevance.get(strMin);
                             if (countR == null) {
                                 msgRelevance.put(strMin, 1);
-                            }
-                            else {
+                            } else {
                                 msgRelevance.put(strMin, countR + 1);
                             }
                         }
@@ -265,43 +264,41 @@ public class Main {
 
 
                             FileHeader header = df.toFileHeader(diff);
-                           // System.out.println(header.toString());
+                            // System.out.println(header.toString());
                             EditList list = header.toEditList();
 
                             String name = header.getNewPath();//имя файла с изменениями
 
                             if (!pathInGit.equals("") && name.startsWith(pathInGit))
-                            for (Edit edit : list) {
-                               // System.out.println(edit);
-                                //linesDeleted += edit.getEndA() - edit.getBeginA();
-                                //linesAdded += edit.getEndB() - edit.getBeginB();
+                                for (Edit edit : list) {
+                                    // System.out.println(edit);
+                                    //linesDeleted += edit.getEndA() - edit.getBeginA();
+                                    //linesAdded += edit.getEndB() - edit.getBeginB();
 
-                                //обновить общий map по имени файла
-                                Integer countTot = mapFileNameChanges.get(name);
-                                if (countTot == null) {
-                                    mapFileNameChanges.put(name, 1);
-                                }
-                                else {
-                                    mapFileNameChanges.put(name, countTot + 1);
-                                }
-
-
-                                for (int line = edit.getEndB(); line <= edit.getBeginB(); line++) {
-                                    //обновить map по файлу и по линии
-                                    KeyFilePos key = new KeyFilePos(name, line);
-                                    Integer countLS = mapFileChanges.get(key);
-                                    if (countLS == null) {
-                                        mapFileChanges.put(key, 1);
-                                    }
-                                    else {
-                                        mapFileChanges.put(key, countLS + 1);
+                                    //обновить общий map по имени файла
+                                    Integer countTot = mapFileNameChanges.get(name);
+                                    if (countTot == null) {
+                                        mapFileNameChanges.put(name, 1);
+                                    } else {
+                                        mapFileNameChanges.put(name, countTot + 1);
                                     }
 
 
+                                    for (int line = edit.getEndB(); line <= edit.getBeginB(); line++) {
+                                        //обновить map по файлу и по линии
+                                        KeyFilePos key = new KeyFilePos(name, line);
+                                        Integer countLS = mapFileChanges.get(key);
+                                        if (countLS == null) {
+                                            mapFileChanges.put(key, 1);
+                                        } else {
+                                            mapFileChanges.put(key, countLS + 1);
+                                        }
+
+
+                                    }
+
+
                                 }
-
-
-                            }
                         }
 
                         System.out.println("*********************************************");
@@ -313,15 +310,14 @@ public class Main {
         }
 
         //sort the map of fixes
-        msgRelevance =   sortByValue( msgRelevance );
+        msgRelevance = sortByValue(msgRelevance);
 
 
         System.out.println("**************************************");
         System.out.println("The most 35 frequent errors:");
 
         int c = 0;
-        for (Map.Entry<String, Integer> entry : msgRelevance.entrySet())
-        {
+        for (Map.Entry<String, Integer> entry : msgRelevance.entrySet()) {
             if (c++ > 35) break;
             System.out.println(entry.getKey() + "/" + entry.getValue());
         }
@@ -330,10 +326,9 @@ public class Main {
         System.out.println("The most frequent files with changes:");
 
         //sort the map of filechanges
-        mapFileNameChanges =   sortByValue(mapFileNameChanges);
+        mapFileNameChanges = sortByValue(mapFileNameChanges);
         c = 0;
-        for (Map.Entry<String, Integer> entry : mapFileNameChanges.entrySet())
-        {
+        for (Map.Entry<String, Integer> entry : mapFileNameChanges.entrySet()) {
             if (c++ > 20) break;
             String fileName = entry.getKey();
 
@@ -358,16 +353,15 @@ public class Main {
                 }
             }
 
-                //sort list pairs
-                 pairsList.sort(Comparator.comparing(p -> -p.getValue()));
-                //show top 10 pairs
-                int ccc = 0;
-                for (Pair<Integer, Integer> pair : pairsList)
-                {
-                    if (ccc++ > 10) break;
+            //sort list pairs
+            pairsList.sort(Comparator.comparing(p -> -p.getValue()));
+            //show top 10 pairs
+            int ccc = 0;
+            for (Pair<Integer, Integer> pair : pairsList) {
+                if (ccc++ > 10) break;
 
-                    Integer lineToCheck =  pair.getKey();
-                    System.out.println(" Line:" + lineToCheck + ", changes -> " + pair.getValue());
+                Integer lineToCheck = pair.getKey();
+                System.out.println(" Line:" + lineToCheck + ", changes -> " + pair.getValue());
 
                     /*
                     // look for commits for the Line
@@ -408,14 +402,11 @@ public class Main {
                     }*/
 
 
-                }
             }
-
-
-
         }
 
 
+    }
 
 
 }
