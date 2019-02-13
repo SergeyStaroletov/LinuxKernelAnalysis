@@ -7,6 +7,7 @@ import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.diff.*;
 import org.eclipse.jgit.internal.storage.file.FileRepository;
 import org.eclipse.jgit.lib.Constants;
+import org.eclipse.jgit.lib.PersonIdent;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.patch.FileHeader;
@@ -67,10 +68,10 @@ public class Main {
         }
 
         // Step 2
-        for (int i = 0; i <= n; d[i][0] = i++) ;
+        for (int i = 0; i <= n; d[i][0] = i++);
 
 
-        for (int j = 0; j <= m; d[0][j] = j++) ;
+        for (int j = 0; j <= m; d[0][j] = j++);
 
         // Step 3
         for (int i = 1; i <= n; i++) {
@@ -93,9 +94,9 @@ public class Main {
     public static void main(String[] args) throws IOException, GitAPIException {
         //Repository repo = new FileRepository("/Users/sergey/IdeaProjects/bluez/.git");
         // Repository repo = new FileRepository("/Users/sergey/IdeaProjects/CalculatorTDD/.git");
-        Repository repo = new FileRepository("/Users/sergey/IdeaProjects/linux/.git");
+        Repository repo = new FileRepository("/Users/sergey/Projects/to_analize/linux/.git");
 
-        String pathInGit = "mm";
+        String pathInGit = "/";
 
         DiffFormatter df = new DiffFormatter(DisabledOutputStream.INSTANCE);
         df.setRepository(repo);
@@ -217,9 +218,9 @@ public class Main {
                         if (end != -1) newMsg = newMsg.substring(pos, end);
                         else newMsg = newMsg.substring(pos);
                         System.out.println("Commit : " + String.valueOf(current) + "/" + String.valueOf(count) + ", branch = " + branch.getName());
-                        //System.out.println(commit.getName());
-                        //System.out.println(commit.getAuthorIdent().getName());
-                        System.out.println(new Date(commit.getCommitTime()));
+                        PersonIdent authorIdent = commit.getAuthorIdent();
+                        Date authorDate = authorIdent.getWhen();
+                        System.out.println(authorIdent.getName() + " commited on " + authorDate);
                         System.out.println(newMsg);
 
                         messages.add(newMsg);
@@ -269,7 +270,7 @@ public class Main {
 
                             String name = header.getNewPath();//имя файла с изменениями
 
-                            if (!pathInGit.equals("") && name.startsWith(pathInGit))
+                           // if (!pathInGit.equals("") && name.startsWith(pathInGit))
                                 for (Edit edit : list) {
                                     // System.out.println(edit);
                                     //linesDeleted += edit.getEndA() - edit.getBeginA();
