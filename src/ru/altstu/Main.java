@@ -14,10 +14,7 @@ import org.eclipse.jgit.patch.FileHeader;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.treewalk.TreeWalk;
-import org.eclipse.jgit.util.SystemReader;
 import org.eclipse.jgit.util.io.DisabledOutputStream;
-
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -62,15 +59,12 @@ public class Main {
         if (n == 0) {
             return m;
         }
-
         if (m == 0) {
             return n;
         }
 
         // Step 2
         for (int i = 0; i <= n; d[i][0] = i++);
-
-
         for (int j = 0; j <= m; d[0][j] = j++);
 
         // Step 3
@@ -91,28 +85,28 @@ public class Main {
     }
 
 
+    /*
+
+    Analize repository given by the repo constuctor
+
+     */
+
     public static void main(String[] args) throws IOException, GitAPIException {
         //Repository repo = new FileRepository("/Users/sergey/IdeaProjects/bluez/.git");
         // Repository repo = new FileRepository("/Users/sergey/IdeaProjects/CalculatorTDD/.git");
         Repository repo = new FileRepository("/Users/sergey/Projects/to_analize/linux/.git");
 
-        String pathInGit = "/";
+        String pathInGit = "/"; //change path here for example, to "mm" in linux kernel git
 
         DiffFormatter df = new DiffFormatter(DisabledOutputStream.INSTANCE);
         df.setRepository(repo);
         df.setDiffComparator(RawTextComparator.DEFAULT);
         df.setDetectRenames(true);
-
-        // ByteArrayOutputStream os = new ByteArrayOutputStream();
         DiffFormatter df2 = new DiffFormatter(System.out);
         RawTextComparator cmp = RawTextComparator.DEFAULT;
-
         df2.setRepository(repo);
         df2.setDiffComparator(cmp);
         df2.setDetectRenames(true);
-
-
-        //TreeWalk treeWalk = new TreeWalk(repo);
 
         Git git = new Git(repo);
         RevWalk walk = new RevWalk(repo);
@@ -126,15 +120,12 @@ public class Main {
         //map filename -> count changes
         Map<String, Integer> mapFileNameChanges = new HashMap<String, Integer>();
 
-
         List<Ref> branches = git.branchList().call();
 
         for (Ref branch : branches) {
             String branchName = branch.getName();
-
             System.out.println("Commits of branch: " + branch.getName());
             System.out.println("-------------------------------------");
-
 
             Iterable<RevCommit> commits;
 
@@ -145,7 +136,6 @@ public class Main {
                         .addPath(pathInGit);
                 commits = logCommand.call();
             }
-
 
             int count = 0;
             for (RevCommit commit : commits) {
@@ -162,9 +152,7 @@ public class Main {
 
             int current = 0;
 
-
             for (RevCommit commit : commits) {
-
                 current++;
                 TreeWalk treeWalk = new TreeWalk(repo);
                 RevCommit parent;
@@ -173,9 +161,6 @@ public class Main {
                 } catch (Exception ex) {
                     break;
                 }
-                //treeWalk.reset(commit.getTree());
-
-
                 boolean foundInThisBranch = false;
 
                 RevCommit targetCommit = walk.parseCommit(repo.resolve(
@@ -194,27 +179,18 @@ public class Main {
                 }
 
                 if (foundInThisBranch) {
-
-                    //System.out.println(commit.getFullMessage());
-
                     String newMsg = commit.getFullMessage();
 
                     int pos = newMsg.indexOf("Fix");
                     Boolean isFixes = false;
-
                     int posFixes = newMsg.indexOf("Fixes:");
                     if (posFixes == pos) isFixes = true;
-
-                    //int pos = 0;
                     if (pos != -1) {
-
                         if (!isFixes)
                             pos += 3;
                         else
                             pos += 6;//for messages with Fixes:
-
                         int end = newMsg.indexOf('\n', pos);
-
                         if (end != -1) newMsg = newMsg.substring(pos, end);
                         else newMsg = newMsg.substring(pos);
                         System.out.println("Commit : " + String.valueOf(current) + "/" + String.valueOf(count) + ", branch = " + branch.getName());
@@ -222,11 +198,9 @@ public class Main {
                         Date authorDate = authorIdent.getWhen();
                         System.out.println(authorIdent.getName() + " commited on " + authorDate);
                         System.out.println(newMsg);
-
                         messages.add(newMsg);
 
                         //find the nearest string
-
                         int min = Integer.MAX_VALUE;
                         String strMin = "";
                         ListIterator<String> listIterator = messages.listIterator();
@@ -254,27 +228,21 @@ public class Main {
                                 msgRelevance.put(strMin, countR + 1);
                             }
                         }
-
                         System.out.println("The closest msg is : " + strMin);
 
                         //detect changes in files
                         List<DiffEntry> diffs;
-
                         diffs = df.scan(parent.getTree(), commit.getTree());
                         for (DiffEntry diff : diffs) {
-
-
                             FileHeader header = df.toFileHeader(diff);
                             // System.out.println(header.toString());
                             EditList list = header.toEditList();
-
                             String name = header.getNewPath();//имя файла с изменениями
-
                            // if (!pathInGit.equals("") && name.startsWith(pathInGit))
-                                for (Edit edit : list) {
-                                    // System.out.println(edit);
-                                    //linesDeleted += edit.getEndA() - edit.getBeginA();
-                                    //linesAdded += edit.getEndB() - edit.getBeginB();
+                            for (Edit edit : list) {
+                                // System.out.println(edit);
+                                //linesDeleted += edit.getEndA() - edit.getBeginA();
+                                //linesAdded += edit.getEndB() - edit.getBeginB();
 
                                     //обновить общий map по имени файла
                                     Integer countTot = mapFileNameChanges.get(name);
@@ -283,7 +251,6 @@ public class Main {
                                     } else {
                                         mapFileNameChanges.put(name, countTot + 1);
                                     }
-
 
                                     for (int line = edit.getEndB(); line <= edit.getBeginB(); line++) {
                                         //обновить map по файлу и по линии
@@ -294,25 +261,17 @@ public class Main {
                                         } else {
                                             mapFileChanges.put(key, countLS + 1);
                                         }
-
-
                                     }
-
-
                                 }
                         }
-
                         System.out.println("*********************************************");
-
                     }
-
                 }
             }
         }
 
         //sort the map of fixes
         msgRelevance = sortByValue(msgRelevance);
-
 
         System.out.println("**************************************");
         System.out.println("The most 35 frequent errors:");
@@ -332,9 +291,7 @@ public class Main {
         for (Map.Entry<String, Integer> entry : mapFileNameChanges.entrySet()) {
             if (c++ > 20) break;
             String fileName = entry.getKey();
-
             System.out.println("Filename: " + fileName + "/" + entry.getValue());
-
             /*
             LogCommand logCommand = git.log()
                 .add(git.getRepository().resolve(Constants.HEAD))
@@ -343,17 +300,14 @@ public class Main {
 
             Iterable<RevCommit> iter = logCommand.call();
             */
-
             //track the most changed lines
             List<Pair<Integer, Integer>> pairsList = new ArrayList<Pair<Integer, Integer>>();
-
             for (Map.Entry<KeyFilePos, Integer> mapp : mapFileChanges.entrySet()) {
                 //count all (position, count) for that filename
                 if (mapp.getKey().fileName.equals(entry.getKey())) {
                     pairsList.add(new Pair<Integer, Integer>(mapp.getKey().position, mapp.getValue()));
                 }
             }
-
             //sort list pairs
             pairsList.sort(Comparator.comparing(p -> -p.getValue()));
             //show top 10 pairs
@@ -363,7 +317,6 @@ public class Main {
 
                 Integer lineToCheck = pair.getKey();
                 System.out.println(" Line:" + lineToCheck + ", changes -> " + pair.getValue());
-
                     /*
                     // look for commits for the Line
                     for (RevCommit revCommit : iter) {
@@ -401,13 +354,7 @@ public class Main {
                             }
                         }
                     }*/
-
-
             }
         }
-
-
     }
-
-
 }
