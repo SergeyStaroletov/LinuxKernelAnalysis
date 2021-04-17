@@ -1,30 +1,22 @@
 # Linux Kernel Analysis using Levenshtein Distance and JGit
 
-Suppose  we  have  a  local  Git  repository  of  the  Kernel or  Kernel  related  sources  
-(but  it  can  be  applied  to  any  Git repository too).
+Suppose  we  have  a  local  Git  repository  of  the  Kernel  or Kernel related sources (but the presenting technique can also be applied to any Git repository). Our goals are:
 
-Our goal is to:
+1)  Find the most frequent errors. It could be known as: find the  most  common  commit  messages  of  fixes,  and  then reformulated to: find the most relevant commit messages of fixes, not necessary the same but similar.
+2)  Find  the  most  buggy  sources.  It  could  be  reformulated to: find the files which were mentioned in the commitswith ”fix” message most often.
+3)  Find  the  most  buggy  lines  of  code.  It  could  be  reformulated to: find the lines which were mentioned in the fixing commit messages in the most buggy source files most often. 
 
-1)Find  the  most  frequent  errors.  It  could  be  reformulated as: find the most common commit messages of fixes, and 
-then reformulated to: find the most relevantcommit messages of fixes, not necessary the same but similar.
+Solving  the  first  problem  will  able  us  to  getting  know  themost regular classes of the errors in C Kernel code. 
+Developer sand teachers should be aware of them by learning C techniquesand Kernel programming patterns.
 
-2)Find  the  most  buggy  sources.  It  could  be  reformulated  to:  find  the  files  which  were  mentioned  in  
-thecommits with ”fix” message most often.
+Solving the second problem will show us the most unstableportions of the Kernel. Also, it could mean that a component 
+corresponding  to  the  found  file  is  in  an  active  developmentand fixing because of its significance. 
 
-3)Find  the  most  buggy  lines  of  code.  It  could  bereformulated to: find the lines which were mentioned 
-in  the  fixing  commit  messages  in  the  most  buggysource files most often.
+And solving the third program can be useful for analysing the errors with respect to a source code.
 
+===
 
-Solving the first problem will able us to getting know the most regular classes of the errors in C Kernel code. 
-Developers and  teachers  should  be  aware  of  them  to  learn  C  techniques 
-and kernel programming to avoid them.
-
-Solving the second problem will show us the most unstable portions of the Kernel, 
-it could be very hard to write them at once  correctly  because  of  difficulty.  
-
-Also,  it  could  mean  that the component corresponding to file is an active development and fixing because of significance.
-And solving the third program can be useful for analysingthe errors with respect to a source code 
-
+I did it for fun. Please write me if you use the results of the research. 
 
 Related publications: 
 
