@@ -44,8 +44,7 @@ public class Main {
     }
 
     /**
-     * Computes destance between 2 strings
-     *
+     * Computes distance between 2 strings s and t
      * @param s
      * @param t
      * @return
@@ -54,7 +53,6 @@ public class Main {
         int n = s.length();
         int m = t.length();
         int[][] d = new int[n + 1][m + 1];
-
         // Step 1
         if (n == 0) {
             return m;
@@ -62,18 +60,15 @@ public class Main {
         if (m == 0) {
             return n;
         }
-
         // Step 2
         for (int i = 0; i <= n; d[i][0] = i++);
         for (int j = 0; j <= m; d[0][j] = j++);
-
         // Step 3
         for (int i = 1; i <= n; i++) {
             //Step 4
             for (int j = 1; j <= m; j++) {
                 // Step 5
                 int cost = (t.charAt(j - 1) == s.charAt(i - 1)) ? 0 : 1;
-
                 // Step 6
                 d[i][j] = Math.min(
                         Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1),
@@ -84,15 +79,11 @@ public class Main {
         return d[n][m];
     }
 
-
     /*
-
-    Analize repository given by the repo constuctor
-
+    Analyze repository given by the repo constructor
      */
-
     public static void main(String[] args) throws IOException, GitAPIException {
-        //Repository repo = new FileRepository("/Users/sergey/IdeaProjects/bluez/.git");
+        // Repository repo = new FileRepository("/Users/sergey/IdeaProjects/bluez/.git");
         // Repository repo = new FileRepository("/Users/sergey/IdeaProjects/CalculatorTDD/.git");
         Repository repo = new FileRepository("/Users/sergey/Projects/to_analize/linux/.git");
 
@@ -121,6 +112,11 @@ public class Main {
         Map<String, Integer> mapFileNameChanges = new HashMap<String, Integer>();
 
         List<Ref> branches = git.branchList().call();
+
+        for (Ref branch : branches) {
+            String branchName = branch.getName();
+            System.out.println("Found branch: " + branch.getName());
+        }
 
         for (Ref branch : branches) {
             String branchName = branch.getName();
@@ -185,11 +181,12 @@ public class Main {
                     Boolean isFixes = false;
                     int posFixes = newMsg.indexOf("Fixes:");
                     if (posFixes == pos) isFixes = true;
+                    // correct for messages with Fixes:
                     if (pos != -1) {
                         if (!isFixes)
                             pos += 3;
                         else
-                            pos += 6;//for messages with Fixes:
+                            pos += 6;
                         int end = newMsg.indexOf('\n', pos);
                         if (end != -1) newMsg = newMsg.substring(pos, end);
                         else newMsg = newMsg.substring(pos);
@@ -244,7 +241,7 @@ public class Main {
                                 //linesDeleted += edit.getEndA() - edit.getBeginA();
                                 //linesAdded += edit.getEndB() - edit.getBeginB();
 
-                                    //обновить общий map по имени файла
+                                    // fix common map by filename
                                     Integer countTot = mapFileNameChanges.get(name);
                                     if (countTot == null) {
                                         mapFileNameChanges.put(name, 1);
@@ -253,7 +250,7 @@ public class Main {
                                     }
 
                                     for (int line = edit.getEndB(); line <= edit.getBeginB(); line++) {
-                                        //обновить map по файлу и по линии
+                                        // fix common map by filename and line
                                         KeyFilePos key = new KeyFilePos(name, line);
                                         Integer countLS = mapFileChanges.get(key);
                                         if (countLS == null) {
@@ -274,11 +271,11 @@ public class Main {
         msgRelevance = sortByValue(msgRelevance);
 
         System.out.println("**************************************");
-        System.out.println("The most 35 frequent errors:");
+        System.out.println("The most 50 frequent errors:");
 
         int c = 0;
         for (Map.Entry<String, Integer> entry : msgRelevance.entrySet()) {
-            if (c++ > 35) break;
+            if (c++ > 50) break;
             System.out.println(entry.getKey() + "/" + entry.getValue());
         }
 
