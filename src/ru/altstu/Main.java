@@ -65,15 +65,15 @@ public class Main {
   static Map<String, Integer> mapFileNameChanges = new HashMap<String, Integer>();
 
   //detect changes in files
-  public static void detectChanges(DiffFormatter df, RevCommit parent, RevCommit commit) throws IOException {
+  public static void detectChanges(DiffFormatter df, RevCommit parent, RevCommit commit, String pathInGit) throws IOException {
     List<DiffEntry> diffs;
     diffs = df.scan(parent.getTree(), commit.getTree());
     for (DiffEntry diff : diffs) {
       FileHeader header = df.toFileHeader(diff);
       EditList list = header.toEditList();
-      String name = header.getNewPath();//имя файла с изменениями
-      // if (!pathInGit.equals("") && name.startsWith(pathInGit))
-      for (Edit edit : list) {
+      String name = header.getNewPath();//filename with changes
+      if (!pathInGit.equals("") && name.startsWith(pathInGit))
+        for (Edit edit : list) {
         // System.out.println(edit);
         //linesDeleted += edit.getEndA() - edit.getBeginA();
         //linesAdded += edit.getEndB() - edit.getBeginB();
@@ -180,7 +180,9 @@ public class Main {
               matcher.addNewMsg(line);
           }
         }
-        detectChanges(df, parent, commit);
+
+        detectChanges(df, parent, commit, pathInGit);
+
         if ( (current * 100 /(count + 1)) % 10 == 0)
           System.out.println(current + " / " + count);
         current++;
@@ -190,8 +192,6 @@ public class Main {
       System.out.println("Time to process commits: " + ((commitProcessTime - startTime) / 1000) + " sec" );
 
       matcher.buildMsgDistances();
-      long endTime = System.currentTimeMillis();
-      System.out.println("Time of work: " + ((endTime - startTime) / 1000) + " sec" );
 
     }
 
@@ -270,5 +270,12 @@ public class Main {
         }*/
       }
     }
+
+    long endTime = System.currentTimeMillis();
+    System.out.println("Time of work: " + ((endTime - startTime) / 1000) + " sec" );
+
   }
+
+
+
 }
