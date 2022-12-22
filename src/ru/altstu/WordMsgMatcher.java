@@ -58,7 +58,7 @@ public class WordMsgMatcher implements IMsgMatcher {
       if (!uniqueWords.contains(rightWord)) {
         uniqueWords.add(rightWord);
       }
-      int pos = uniqueWords.indexOf(rightWord); //number of word in the list of all words
+      int pos = uniqueWords.indexOf(rightWord); // number of word in the list of all words
       feature.put(pos, 1.0);
       sz += 1;
     }
@@ -72,7 +72,7 @@ public class WordMsgMatcher implements IMsgMatcher {
   public void buildMsgDistances() throws InterruptedException {
     if (tfidf) {
       int d = uniqueWords.size();
-      //calculate idfs
+      // calculate idfs
       double[] idfs = new double[d];
       for (int w = 0; w < d; w++) {
         int idf = 0;
@@ -81,7 +81,7 @@ public class WordMsgMatcher implements IMsgMatcher {
         }
         idfs[w] = Math.log(1.0 * d / idf);
       }
-      //calculate tf and fix the vectors
+      // calculate tf and fix the vectors
       int f = 0;
       for (HashMap<Integer, Double> feature : features) {
         double newSz = 0;
@@ -101,15 +101,15 @@ public class WordMsgMatcher implements IMsgMatcher {
 
     // iteration for all messages should be parallelized
     int cores = Runtime.getRuntime().availableProcessors();
-    int msg_len = messages.size();
+    int msgLen = messages.size();
     Vector<Thread> threads = new Vector<>(cores);
     for (int p = 0; p < cores; p++) {
-      final int start_i = p * msg_len / cores;
-      final int end_i = (p != (cores-1)) ? start_i + (msg_len / cores): msg_len;
-      final int my_p = p;
+      final int startI = p * msgLen / cores;
+      final int endI = (p != (cores - 1)) ? startI + (msgLen / cores): msgLen;
+      final int myP = p;
       Thread t = new Thread(
           (Runnable) () -> {
-            for (int i = start_i; i < end_i; i++)
+            for (int i = startI; i < endI; i++)
               for (int j = 0; j < messages.size(); j++)
                 if (i != j) {
                   HashMap<Integer, Double> vector1 = features.get(i);
@@ -124,7 +124,7 @@ public class WordMsgMatcher implements IMsgMatcher {
                   }
                   diff /= (sizes.get(i) * sizes.get(j));
                   diff = 1.0 - diff;
-                  //System.out.println("t=" + my_p+ ") i = " + i + " diff '" + messages.get(i)+ "' vs '" + messages.get(j) + "' = " + diff);
+                  //System.out.println("t=" + myP+ ") i = " + i + " diff '" + messages.get(i)+ "' vs '" + messages.get(j) + "' = " + diff);
                   if (diff < 0.7) {
                     weights.getAndIncrement(i); //[i]++;
                     weights.getAndIncrement(j);
@@ -140,21 +140,20 @@ public class WordMsgMatcher implements IMsgMatcher {
 
     // sort msgs by the weights
     // do now finding max for top times (compl max*O(n))
-    final int top = 20;
+    final int top = 20;//todo: set top
     Vector<String> relevantMsgs = new Vector<>(top);
     for (int total = 0; total < top; total++) {
       int max = -1;
-      int max_i = 0;
+      int maxI = 0;
       for (int i = 0; i < weights.length(); i++)
         if (weights.get(i) > max) {
-          max_i = i;
+          maxI = i;
           max = weights.get(i);
         }
-      relevantMsgs.add(messages.get(max_i) + " / " + weights.get(max_i));
-      weights.set(max_i, 0);
+      relevantMsgs.add(messages.get(maxI) + " / " + weights.get(maxI));
+      weights.set(maxI, 0);
     }
-
-
+    // print
     for (String msg: relevantMsgs) {
       System.out.println(msg);
     }

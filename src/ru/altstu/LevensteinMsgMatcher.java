@@ -1,13 +1,7 @@
 package ru.altstu;
 
-import org.eclipse.jgit.diff.DiffEntry;
-import org.eclipse.jgit.diff.Edit;
-import org.eclipse.jgit.diff.EditList;
-import org.eclipse.jgit.lib.PersonIdent;
-import org.eclipse.jgit.patch.FileHeader;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 import static ru.altstu.Main.sortByValue;
 
@@ -81,7 +75,7 @@ public class LevensteinMsgMatcher implements IMsgMatcher {
     } else {
       msgRelevance.put(newMsg, countR + 1);
     }
-    if (strMin.length() > 0) {
+    if (strMin.length() > 0) { //?
       countR = msgRelevance.get(strMin);
       if (countR == null) {
         msgRelevance.put(strMin, 1);

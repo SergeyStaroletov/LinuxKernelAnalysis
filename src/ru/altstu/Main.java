@@ -22,12 +22,12 @@ import java.util.stream.Collectors;
 public class Main {
 
 
-  public static boolean CheckIfFixMessage(String msg) {
+  public static boolean checkIfFixMessage(String msg) {
     int pos = msg.toLowerCase().indexOf("fix");
     return (pos != -1);
   }
 
-  public static boolean IfInBranch(Repository repo, RevWalk walk,RevCommit commit, String branchName) throws IOException {
+  public static boolean inBranch(Repository repo, RevWalk walk, RevCommit commit, String branchName) throws IOException {
     boolean foundInThisBranch = false;
 
     RevCommit targetCommit = walk.parseCommit(repo.resolve(
@@ -116,8 +116,6 @@ public class Main {
 
 
 
-
-
   /*
   Analyze repository given by the repo constructor
    */
@@ -125,10 +123,10 @@ public class Main {
 
     long startTime = System.currentTimeMillis();
 
-    IMsgMatcher matcher = new WordMsgMatcher();
+    IMsgMatcher matcher = new WordMsgMatcher(); // or LevensteinMsgMatcher()
 
     // Repository repo = new FileRepository("/Users/sergey/IdeaProjects/bluez/.git");
-    Repository repo = new FileRepository("/Users/sergey/inria/linux/.git");
+    Repository repo = new FileRepository("/Users/sergey/linux/.git");
     String pathInGit = "drivers/thunderbolt/"; //change path here for example, to "mm" in linux kernel git
     //String pathInGit = "mm/"; //change path here for example, to "mm" in linux kernel git
 
@@ -173,12 +171,12 @@ public class Main {
           continue;
         }
 
-        if (IfInBranch(repo, walk, commit, branchName)) {
+        if (inBranch(repo, walk, commit, branchName)) {
           String newMsg = commit.getFullMessage();
           String lines[] = newMsg.split("\n");
           for (String line: lines) {
             // for multi-line commit message do we fix something?
-            if (CheckIfFixMessage(line))
+            if (checkIfFixMessage(line))
               matcher.addNewMsg(line);
           }
         }
