@@ -7,14 +7,11 @@ import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.diff.*;
 import org.eclipse.jgit.internal.storage.file.FileRepository;
 import org.eclipse.jgit.lib.Constants;
-import org.eclipse.jgit.lib.PersonIdent;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.patch.FileHeader;
-import org.eclipse.jgit.revwalk.DepthWalk;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevWalk;
-import org.eclipse.jgit.treewalk.TreeWalk;
 import org.eclipse.jgit.util.io.DisabledOutputStream;
 
 import java.io.IOException;
@@ -23,26 +20,6 @@ import java.util.stream.Collectors;
 
 
 public class Main {
-
-  /**
-   * Sorts a map by the value (desc)
-   *
-   * @param map
-   * @param <K>
-   * @param <V>
-   * @return
-   */
-  public static <K, V extends Comparable<? super V>> Map<K, V> sortByValue(Map<K, V> map) {
-    return map.entrySet()
-        .stream()
-        .sorted(Map.Entry.comparingByValue(Collections.reverseOrder()))
-        .collect(Collectors.toMap(
-            Map.Entry::getKey,
-            Map.Entry::getValue,
-            (e1, e2) -> e1,
-            LinkedHashMap::new
-        ));
-  }
 
 
   public static boolean CheckIfFixMessage(String msg) {
@@ -82,6 +59,65 @@ public class Main {
     return commits;
   }
 
+  //map (filename, pos) -> count changes
+  static Map<KeyFilePos, Integer> mapFileChanges = new HashMap<KeyFilePos, Integer>();
+  //map filename -> count changes
+  static Map<String, Integer> mapFileNameChanges = new HashMap<String, Integer>();
+
+  //detect changes in files
+  public static void detectChanges(DiffFormatter df, RevCommit parent, RevCommit commit) throws IOException {
+    List<DiffEntry> diffs;
+    diffs = df.scan(parent.getTree(), commit.getTree());
+    for (DiffEntry diff : diffs) {
+      FileHeader header = df.toFileHeader(diff);
+      EditList list = header.toEditList();
+      String name = header.getNewPath();//имя файла с изменениями
+      // if (!pathInGit.equals("") && name.startsWith(pathInGit))
+      for (Edit edit : list) {
+        // System.out.println(edit);
+        //linesDeleted += edit.getEndA() - edit.getBeginA();
+        //linesAdded += edit.getEndB() - edit.getBeginB();
+
+        // fix common map by filename
+        Integer countTot = mapFileNameChanges.get(name);
+        if (countTot == null) {
+          mapFileNameChanges.put(name, 1);
+        } else {
+          mapFileNameChanges.put(name, countTot + 1);
+        }
+
+        for (int line = edit.getEndB(); line <= edit.getBeginB(); line++) {
+          // fix common map by filename and line
+          KeyFilePos key = new KeyFilePos(name, line);
+          Integer countLS = mapFileChanges.get(key);
+          if (countLS == null) {
+            mapFileChanges.put(key, 1);
+          } else {
+            mapFileChanges.put(key, countLS + 1);
+          }
+        }
+      }
+    }
+  }
+
+  // Sorts a map by the value (desc)
+  public static <K, V extends Comparable<? super V>> Map<K, V> sortByValue(Map<K, V> map) {
+    return map.entrySet()
+        .stream()
+        .sorted(Map.Entry.comparingByValue(Collections.reverseOrder()))
+        .collect(Collectors.toMap(
+            Map.Entry::getKey,
+            Map.Entry::getValue,
+            (e1, e2) -> e1,
+            LinkedHashMap::new
+        ));
+  }
+
+
+
+
+
+
   /*
   Analyze repository given by the repo constructor
    */
@@ -108,12 +144,6 @@ public class Main {
     Git git = new Git(repo);
     RevWalk walk = new RevWalk(repo);
 
-    //List<String> messages = new LinkedList<String>();
-    Map<String, Integer> msgRelevance = new HashMap<String, Integer>();
-    //map (filename, pos) -> count changes
-    Map<KeyFilePos, Integer> mapFileChanges = new HashMap<KeyFilePos, Integer>();
-    //map filename -> count changes
-    Map<String, Integer> mapFileNameChanges = new HashMap<String, Integer>();
     List<Ref> branches = git.branchList().call();
 
     for (Ref branch : branches) {
@@ -132,6 +162,7 @@ public class Main {
       }
       // again, because of the iterator
       commits = obtainCommits(git, pathInGit);
+
       // record all commit messages
       int current = 0;
       for (RevCommit commit : commits) {
@@ -151,7 +182,7 @@ public class Main {
               matcher.addNewMsg(line);
           }
         }
-
+        detectChanges(df, parent, commit);
         if ( (current * 100 /(count + 1)) % 10 == 0)
           System.out.println(current + " / " + count);
         current++;
@@ -164,116 +195,27 @@ public class Main {
       long endTime = System.currentTimeMillis();
       System.out.println("Time of work: " + ((endTime - startTime) / 1000) + " sec" );
 
-      if (6 > 5) return; //todo - move code to Levenshtain matcher
-
-      current = 0;
-
-      for (RevCommit commit : commits) {
-        current++;
-        RevCommit parent;
-        try {
-          parent = commit.getParent(0);
-        } catch (Exception ex) {
-          continue;
-        }
-
-        if (IfInBranch(repo, walk, commit, branchName)) {
-          String newMsg = commit.getFullMessage();
-          if (CheckIfFixMessage(newMsg)) {
-            System.out.println("Commit : " + current + "/" + count + ", branch = " + branch.getName());
-            PersonIdent authorIdent = commit.getAuthorIdent();
-            Date authorDate = authorIdent.getWhen();
-            System.out.println(authorIdent.getName() + " commited on " + authorDate);
-            System.out.println(newMsg);
-            // messages.add(newMsg);
-            //find the nearest string
-            String strMin = "aaa";
-            Integer countR = msgRelevance.get(newMsg);
-            if (countR == null) {
-              msgRelevance.put(newMsg, 1);
-            } else {
-              msgRelevance.put(newMsg, countR + 1);
-            }
-            if (strMin.length() > 0) {
-              countR = msgRelevance.get(strMin);
-              if (countR == null) {
-                msgRelevance.put(strMin, 1);
-              } else {
-                msgRelevance.put(strMin, countR + 1);
-              }
-            }
-            System.out.println("The closest msg is : " + strMin);
-
-            //detect changes in files
-            List<DiffEntry> diffs;
-            diffs = df.scan(parent.getTree(), commit.getTree());
-            for (DiffEntry diff : diffs) {
-              FileHeader header = df.toFileHeader(diff);
-              // System.out.println(header.toString());
-              EditList list = header.toEditList();
-              String name = header.getNewPath();//имя файла с изменениями
-              // if (!pathInGit.equals("") && name.startsWith(pathInGit))
-              for (Edit edit : list) {
-                // System.out.println(edit);
-                //linesDeleted += edit.getEndA() - edit.getBeginA();
-                //linesAdded += edit.getEndB() - edit.getBeginB();
-
-                // fix common map by filename
-                Integer countTot = mapFileNameChanges.get(name);
-                if (countTot == null) {
-                  mapFileNameChanges.put(name, 1);
-                } else {
-                  mapFileNameChanges.put(name, countTot + 1);
-                }
-
-                for (int line = edit.getEndB(); line <= edit.getBeginB(); line++) {
-                  // fix common map by filename and line
-                  KeyFilePos key = new KeyFilePos(name, line);
-                  Integer countLS = mapFileChanges.get(key);
-                  if (countLS == null) {
-                    mapFileChanges.put(key, 1);
-                  } else {
-                    mapFileChanges.put(key, countLS + 1);
-                  }
-                }
-              }
-            }
-            System.out.println("*********************************************");
-          }
-        }
-      }
     }
 
-    //sort the map of fixes
-    msgRelevance = sortByValue(msgRelevance);
 
-    System.out.println("**************************************");
-    System.out.println("The most 50 frequent errors:");
-
-    int c = 0;
-    for (Map.Entry<String, Integer> entry : msgRelevance.entrySet()) {
-      if (c++ > 50) break;
-      System.out.println(entry.getKey() + "/" + entry.getValue());
-    }
 
     System.out.println("**************************************");
     System.out.println("The most frequent files with changes:");
 
     //sort the map of filechanges
     mapFileNameChanges = sortByValue(mapFileNameChanges);
-    c = 0;
+    int c = 0;
     for (Map.Entry<String, Integer> entry : mapFileNameChanges.entrySet()) {
       if (c++ > 20) break;
       String fileName = entry.getKey();
       System.out.println("Filename: " + fileName + "/" + entry.getValue());
-            /*
-            LogCommand logCommand = git.log()
-                .add(git.getRepository().resolve(Constants.HEAD))
-                .addPath(fileName);
+      /*
+      LogCommand logCommand = git.log()
+          .add(git.getRepository().resolve(Constants.HEAD))
+          .addPath(fileName);
+      Iterable<RevCommit> iter = logCommand.call();
+      */
 
-
-            Iterable<RevCommit> iter = logCommand.call();
-            */
       //track the most changed lines
       List<Pair<Integer, Integer>> pairsList = new ArrayList<Pair<Integer, Integer>>();
       for (Map.Entry<KeyFilePos, Integer> mapp : mapFileChanges.entrySet()) {
@@ -291,43 +233,43 @@ public class Main {
 
         Integer lineToCheck = pair.getKey();
         System.out.println(" Line:" + lineToCheck + ", changes -> " + pair.getValue());
-                    /*
-                    // look for commits for the Line
-                    for (RevCommit revCommit : iter) {
-                        String newMsg = revCommit.getFullMessage();
-                        int pos = newMsg.indexOf("Fix"); //if it is fix
-                        //int pos = 0;
-                        if (pos != -1) {
-                            //and if it has
-                            RevCommit parentC;
-                            try {
-                                parentC = revCommit.getParent(0);
-                            } catch (Exception ex) {
-                                continue;
+        /*
+        // look for commits for the Line
+        for (RevCommit revCommit : iter) {
+            String newMsg = revCommit.getFullMessage();
+            int pos = newMsg.indexOf("Fix"); //if it is fix
+            //int pos = 0;
+            if (pos != -1) {
+                //and if it has
+                RevCommit parentC;
+                try {
+                    parentC = revCommit.getParent(0);
+                } catch (Exception ex) {
+                    continue;
+                }
+                //get the diff
+
+                List<DiffEntry> diffs;
+                diffs = df.scan(parentC.getTree(), revCommit.getTree());
+                for (DiffEntry diff : diffs) {
+                    FileHeader header = df.toFileHeader(diff);
+                    EditList list = header.toEditList();
+
+                    if (header.getNewPath().equals(fileName)) {
+                        for (Edit edit : list) {
+                            //System.out.println(edit);
+                            if (lineToCheck >= edit.getBeginB() && lineToCheck <= edit.getEndB()) {
+                                //our line, print the change
+                                System.out.println("   change: " + df2.toString());
                             }
-                            //get the diff
+                            //linesDeleted += edit.getEndA() - edit.getBeginA();
+                            //linesAdded += edit.getEndB() - edit.getBeginB();
 
-                            List<DiffEntry> diffs;
-                            diffs = df.scan(parentC.getTree(), revCommit.getTree());
-                            for (DiffEntry diff : diffs) {
-                                FileHeader header = df.toFileHeader(diff);
-                                EditList list = header.toEditList();
-
-                                if (header.getNewPath().equals(fileName)) {
-                                    for (Edit edit : list) {
-                                        //System.out.println(edit);
-                                        if (lineToCheck >= edit.getBeginB() && lineToCheck <= edit.getEndB()) {
-                                            //our line, print the change
-                                            System.out.println("   change: " + df2.toString());
-                                        }
-                                        //linesDeleted += edit.getEndA() - edit.getBeginA();
-                                        //linesAdded += edit.getEndB() - edit.getBeginB();
-
-                                    }
-                                }
-                            }
                         }
-                    }*/
+                    }
+                }
+            }
+        }*/
       }
     }
   }
