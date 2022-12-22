@@ -11,17 +11,18 @@ import org.eclipse.jgit.lib.PersonIdent;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.patch.FileHeader;
+import org.eclipse.jgit.revwalk.DepthWalk;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.treewalk.TreeWalk;
 import org.eclipse.jgit.util.io.DisabledOutputStream;
+
 import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
 
 public class Main {
-
 
     /**
      * Sorts a map by the value (desc)
@@ -43,51 +44,59 @@ public class Main {
                 ));
     }
 
-    /**
-     * Computes distance between 2 strings s and t
-     * @param s
-     * @param t
-     * @return
-     */
-    public static int ComputeLevenshteinDistance(String s, String t) {
-        int n = s.length();
-        int m = t.length();
-        int[][] d = new int[n + 1][m + 1];
-        // Step 1
-        if (n == 0) {
-            return m;
-        }
-        if (m == 0) {
-            return n;
-        }
-        // Step 2
-        for (int i = 0; i <= n; d[i][0] = i++);
-        for (int j = 0; j <= m; d[0][j] = j++);
-        // Step 3
-        for (int i = 1; i <= n; i++) {
-            //Step 4
-            for (int j = 1; j <= m; j++) {
-                // Step 5
-                int cost = (t.charAt(j - 1) == s.charAt(i - 1)) ? 0 : 1;
-                // Step 6
-                d[i][j] = Math.min(
-                        Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1),
-                        d[i - 1][j - 1] + cost);
+
+    public static boolean CheckIfFixMessage(String msg) {
+        int pos = msg.toLowerCase().indexOf("fix");
+        return (pos != -1);
+    }
+
+    public static boolean IfInBranch(Repository repo, RevWalk walk,RevCommit commit, String branchName) throws IOException {
+        boolean foundInThisBranch = false;
+
+        RevCommit targetCommit = walk.parseCommit(repo.resolve(
+                commit.getName()));
+        for (Map.Entry<String, Ref> e : repo.getAllRefs().entrySet()) {
+            if (e.getKey().startsWith(Constants.R_HEADS)) {
+                if (walk.isMergedInto(targetCommit, walk.parseCommit(
+                        e.getValue().getObjectId()))) {
+                    String foundInBranch = e.getValue().getName();
+                    if (branchName.equals(foundInBranch)) {
+                        foundInThisBranch = true;
+                        break;
+                    }
+                }
             }
         }
-        // Step 7
-        return d[n][m];
+        return foundInThisBranch;
+    }
+
+    public static Iterable<RevCommit> obtainCommits(Git git, String pathInGit) throws IOException, GitAPIException {
+        Iterable<RevCommit> commits;
+        if (pathInGit.equals("") || pathInGit.equals("/")) commits = git.log().all().call();
+        else {
+            LogCommand logCommand = git.log()
+                    .add(git.getRepository().resolve(Constants.HEAD))
+                    .addPath(pathInGit);
+            commits = logCommand.call();
+        }
+        return commits;
     }
 
     /*
     Analyze repository given by the repo constructor
      */
-    public static void main(String[] args) throws IOException, GitAPIException {
+    public static void main(String[] args) throws Exception {
+
+        long startTime = System.currentTimeMillis();
         // Repository repo = new FileRepository("/Users/sergey/IdeaProjects/bluez/.git");
         // Repository repo = new FileRepository("/Users/sergey/IdeaProjects/CalculatorTDD/.git");
-        Repository repo = new FileRepository("/Users/sergey/Projects/to_analize/linux/.git");
+        Repository repo = new FileRepository("/Users/sergey/inria/linux/.git");
 
-        String pathInGit = "/"; //change path here for example, to "mm" in linux kernel git
+        IMsgMatcher matcher = new WordMsgMatcher();
+
+
+        String pathInGit = "drivers/thunderbolt/"; //change path here for example, to "mm" in linux kernel git
+        //String pathInGit = "mm/"; //change path here for example, to "mm" in linux kernel git
 
         DiffFormatter df = new DiffFormatter(DisabledOutputStream.INSTANCE);
         df.setRepository(repo);
@@ -102,7 +111,7 @@ public class Main {
         Git git = new Git(repo);
         RevWalk walk = new RevWalk(repo);
 
-        List<String> messages = new LinkedList<String>();
+        //List<String> messages = new LinkedList<String>();
         Map<String, Integer> msgRelevance = new HashMap<String, Integer>();
 
         //map (filename, pos) -> count changes
@@ -118,97 +127,88 @@ public class Main {
             System.out.println("Found branch: " + branch.getName());
         }
 
+
         for (Ref branch : branches) {
             String branchName = branch.getName();
             System.out.println("Commits of branch: " + branch.getName());
             System.out.println("-------------------------------------");
 
-            Iterable<RevCommit> commits;
-
-            if (pathInGit.equals("") || pathInGit.equals("/")) commits = git.log().all().call();
-            else {
-                LogCommand logCommand = git.log()
-                        .add(git.getRepository().resolve(Constants.HEAD))
-                        .addPath(pathInGit);
-                commits = logCommand.call();
-            }
+            Iterable<RevCommit> commits = obtainCommits(git, pathInGit);
 
             int count = 0;
             for (RevCommit commit : commits) {
                 count++;
             }
 
-            if (pathInGit.equals("") || pathInGit.equals("/")) commits = git.log().all().call();
-            else {
-                LogCommand logCommand = git.log()
-                        .add(git.getRepository().resolve(Constants.HEAD))
-                        .addPath(pathInGit);
-                commits = logCommand.call();
-            }
 
+
+            // again, because of the iterator
+            commits = obtainCommits(git, pathInGit);
+
+            // record all commit messages
             int current = 0;
 
             for (RevCommit commit : commits) {
-                current++;
-                TreeWalk treeWalk = new TreeWalk(repo);
                 RevCommit parent;
                 try {
                     parent = commit.getParent(0);
                 } catch (Exception ex) {
-                    break;
+                    continue;
                 }
-                boolean foundInThisBranch = false;
 
-                RevCommit targetCommit = walk.parseCommit(repo.resolve(
-                        commit.getName()));
-                for (Map.Entry<String, Ref> e : repo.getAllRefs().entrySet()) {
-                    if (e.getKey().startsWith(Constants.R_HEADS)) {
-                        if (walk.isMergedInto(targetCommit, walk.parseCommit(
-                                e.getValue().getObjectId()))) {
-                            String foundInBranch = e.getValue().getName();
-                            if (branchName.equals(foundInBranch)) {
-                                foundInThisBranch = true;
-                                break;
-                            }
-                        }
+                if (IfInBranch(repo, walk, commit, branchName)) {
+                    String newMsg = commit.getFullMessage();
+                    String lines[] = newMsg.split("\n");
+                    for (String line: lines) {
+                        // for multi-line commit message do we fix something?
+                        if (CheckIfFixMessage(line))
+                            matcher.addNewMsg(line);
                     }
                 }
 
-                if (foundInThisBranch) {
+                if ( (current * 100 /(count + 1)) % 10 == 0)
+                    System.out.println(current + " / " + count);
+                current++;
+            }
+
+            long commitProcessTime = System.currentTimeMillis();
+            System.out.println("Time to process commits: " + ((commitProcessTime - startTime) / 1000) + " sec" );
+
+            matcher.buildMsgDistances();
+            long endTime = System.currentTimeMillis();
+            System.out.println("Time of work: " + ((endTime - startTime) / 1000) + " sec" );
+
+
+            if (6 > 5) return;
+
+
+            current = 0;
+
+            for (RevCommit commit : commits) {
+                current++;
+                RevCommit parent;
+                try {
+                    parent = commit.getParent(0);
+                } catch (Exception ex) {
+                    continue;
+                }
+
+                if (IfInBranch(repo, walk, commit, branchName)) {
                     String newMsg = commit.getFullMessage();
 
-                    int pos = newMsg.indexOf("Fix");
-                    Boolean isFixes = false;
-                    int posFixes = newMsg.indexOf("Fixes:");
-                    if (posFixes == pos) isFixes = true;
-                    // correct for messages with Fixes:
-                    if (pos != -1) {
-                        if (!isFixes)
-                            pos += 3;
-                        else
-                            pos += 6;
-                        int end = newMsg.indexOf('\n', pos);
-                        if (end != -1) newMsg = newMsg.substring(pos, end);
-                        else newMsg = newMsg.substring(pos);
-                        System.out.println("Commit : " + String.valueOf(current) + "/" + String.valueOf(count) + ", branch = " + branch.getName());
+
+
+                    if (CheckIfFixMessage(newMsg)) {
+
+                        System.out.println("Commit : " + current + "/" + count + ", branch = " + branch.getName());
                         PersonIdent authorIdent = commit.getAuthorIdent();
                         Date authorDate = authorIdent.getWhen();
                         System.out.println(authorIdent.getName() + " commited on " + authorDate);
                         System.out.println(newMsg);
-                        messages.add(newMsg);
+                       // messages.add(newMsg);
 
                         //find the nearest string
-                        int min = Integer.MAX_VALUE;
-                        String strMin = "";
-                        ListIterator<String> listIterator = messages.listIterator();
-                        while (listIterator.hasNext()) {
-                            String other = listIterator.next();
-                            int dst = ComputeLevenshteinDistance(newMsg, other);
-                            if (!other.equals(newMsg) && dst < min) {
-                                min = dst;
-                                strMin = other;
-                            }
-                        }
+                        String strMin = "aaa";
 
                         Integer countR = msgRelevance.get(newMsg);
                         if (countR == null) {
@@ -235,31 +235,31 @@ public class Main {
                             // System.out.println(header.toString());
                             EditList list = header.toEditList();
                             String name = header.getNewPath();//имя файла с изменениями
-                           // if (!pathInGit.equals("") && name.startsWith(pathInGit))
+                            // if (!pathInGit.equals("") && name.startsWith(pathInGit))
                             for (Edit edit : list) {
                                 // System.out.println(edit);
                                 //linesDeleted += edit.getEndA() - edit.getBeginA();
                                 //linesAdded += edit.getEndB() - edit.getBeginB();
 
-                                    // fix common map by filename
-                                    Integer countTot = mapFileNameChanges.get(name);
-                                    if (countTot == null) {
-                                        mapFileNameChanges.put(name, 1);
-                                    } else {
-                                        mapFileNameChanges.put(name, countTot + 1);
-                                    }
+                                // fix common map by filename
+                                Integer countTot = mapFileNameChanges.get(name);
+                                if (countTot == null) {
+                                    mapFileNameChanges.put(name, 1);
+                                } else {
+                                    mapFileNameChanges.put(name, countTot + 1);
+                                }
 
-                                    for (int line = edit.getEndB(); line <= edit.getBeginB(); line++) {
-                                        // fix common map by filename and line
-                                        KeyFilePos key = new KeyFilePos(name, line);
-                                        Integer countLS = mapFileChanges.get(key);
-                                        if (countLS == null) {
-                                            mapFileChanges.put(key, 1);
-                                        } else {
-                                            mapFileChanges.put(key, countLS + 1);
-                                        }
+                                for (int line = edit.getEndB(); line <= edit.getBeginB(); line++) {
+                                    // fix common map by filename and line
+                                    KeyFilePos key = new KeyFilePos(name, line);
+                                    Integer countLS = mapFileChanges.get(key);
+                                    if (countLS == null) {
+                                        mapFileChanges.put(key, 1);
+                                    } else {
+                                        mapFileChanges.put(key, countLS + 1);
                                     }
                                 }
+                            }
                         }
                         System.out.println("*********************************************");
                     }

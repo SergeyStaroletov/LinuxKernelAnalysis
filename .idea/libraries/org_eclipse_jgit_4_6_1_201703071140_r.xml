@@ -3,6 +3,8 @@
     <CLASSES>
       <root url="jar://$USER_HOME$/Downloads/org.eclipse.jgit-4.6.1.201703071140-r.jar!/" />
       <root url="jar://$USER_HOME$/Downloads/slf4j-1.7.25/slf4j-api-1.7.25.jar!/" />
+      <root url="jar://$USER_HOME$/Downloads/slf4j-simple-2.0.5.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/slf4j-api-2.0.5.jar!/" />
     </CLASSES>
     <JAVADOC />
     <SOURCES />
