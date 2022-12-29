@@ -15,6 +15,9 @@ import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.util.io.DisabledOutputStream;
 
 import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -123,12 +126,17 @@ public class Main {
 
     long startTime = System.currentTimeMillis();
 
-    IMsgMatcher matcher = new WordMsgMatcher(); // or LevensteinMsgMatcher()
+    IMsgMatcher matcher = new WordMsgMatcher();
+    //IMsgMatcher matcher = new LevensteinMsgMatcher();
 
     // Repository repo = new FileRepository("/Users/sergey/IdeaProjects/bluez/.git");
     Repository repo = new FileRepository("/Users/sergey/linux/.git");
-    String pathInGit = "drivers/thunderbolt/"; //change path here for example, to "mm" in linux kernel git
-    //String pathInGit = "mm/"; //change path here for example, to "mm" in linux kernel git
+    //String pathInGit = "drivers/thunderbolt/"; //change path here for example, to "mm" in linux kernel git
+    String pathInGit = ""; //change path here for example, to "mm" in linux kernel git
+    SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
+
+    Date startDate = formatter.parse("2022-01-01");//new Date(0);
+    Date endDate = formatter.parse("2023-01-01");//new Date(System.currentTimeMillis());
 
     DiffFormatter df = new DiffFormatter(DisabledOutputStream.INSTANCE);
     df.setRepository(repo);
@@ -156,7 +164,11 @@ public class Main {
       Iterable<RevCommit> commits = obtainCommits(git, pathInGit);
       int count = 0;
       for (RevCommit commit : commits) {
-        count++;
+        Date commitDate = new Date(commit.getCommitTime() * 1000L);
+        if (commitDate.after(startDate) && commitDate.before(endDate)) {
+          System.out.println(commitDate.toString());
+          count++;
+        }
       }
       // again, because of the iterator
       commits = obtainCommits(git, pathInGit);
@@ -164,6 +176,9 @@ public class Main {
       // record all commit messages
       int current = 0;
       for (RevCommit commit : commits) {
+        Date commitDate = new Date(commit.getCommitTime() * 1000L);
+        if (!(commitDate.after(startDate) && commitDate.before(endDate)))
+          continue;
         RevCommit parent;
         try {
           parent = commit.getParent(0);

@@ -87,9 +87,9 @@ public class WordMsgMatcher implements IMsgMatcher {
         double newSz = 0;
         double tf = 1.0 / feature.size();
         for (Integer k : feature.keySet()) {
-          double newEl = feature.get(k) * (tf * idfs[k]);
+          double newEl = feature.get(k) / (tf * idfs[k]);
           feature.put(k, newEl);
-          newSz += newEl*newEl;
+          newSz += (newEl * newEl);
         }
         sizes.set(f++, Math.sqrt(newSz));
       }
@@ -108,7 +108,7 @@ public class WordMsgMatcher implements IMsgMatcher {
       final int endI = (p != (cores - 1)) ? startI + (msgLen / cores): msgLen;
       final int myP = p;
       Thread t = new Thread(
-          (Runnable) () -> {
+          () -> {
             for (int i = startI; i < endI; i++)
               for (int j = 0; j < messages.size(); j++)
                 if (i != j) {
@@ -140,7 +140,7 @@ public class WordMsgMatcher implements IMsgMatcher {
 
     // sort msgs by the weights
     // do now finding max for top times (compl max*O(n))
-    final int top = 20;//todo: set top
+    final int top = 50;//todo: set top
     Vector<String> relevantMsgs = new Vector<>(top);
     for (int total = 0; total < top; total++) {
       int max = -1;
